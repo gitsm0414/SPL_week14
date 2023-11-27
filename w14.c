@@ -19,10 +19,20 @@ void* do_monte_carlo(void* arg) {
   thread_data* data = (thread_data*)arg;
 
   /* Write code to implement Monte Carlo here */
-  random_r(data->random_state, &x_int);
-  random_r(data->random_state, &y_int);
-  x = (double)x_int / RAND_MAX;
-  y = (double)y_int / RAND_MAX;
+  
+  for(int i=0; i<data->points; i++){
+	  
+ 	random_r(data->random_state, &x_int);
+	random_r(data->random_state, &y_int);
+  	x = (double)x_int / RAND_MAX;
+  	y = (double)y_int / RAND_MAX;
+
+  	if(x*x+y*y < 1){
+		pthread_mutex_lock(&m);
+	  	count++;
+	  	pthread_mutex_unlock(&m);
+  	}
+  }
 
   pthread_exit(NULL);
 }
@@ -44,6 +54,19 @@ int main(int argc, char* argv[]) {
 
   /* your code here */
   // Hint: use initstate_r to initialize the random state for each thread.
+  
+  for(int i=0; i<n; i++){
+	  unsigned int seed = 2*i+100;
+	  initstate_r(seed, random_statebufs[i], sizeof(random_statebufs), &random_states[i]);
+	  data[i].random_state = &random_states[i];
+	  data[i].points = points;
+
+	  pthread_create(&threads[i], NULL, do_monte_carlo, (void*)&data[i]);
+  }
+  
+  for(int i=0; i<n; i++){
+	  pthread_join(threads[i], NULL);
+  }
 
   /* cannot change lines below */
   double pi = (double)(4 * count) / (double)(n * points);
